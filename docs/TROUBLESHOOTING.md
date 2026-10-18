@@ -174,6 +174,8 @@ and the consequence is not "this section does not take effect" but **every model
 
 To write literal braces, use a single `{` or an unclosed `{{`.
 
+DSH 0.2.x supplies `model` and `provider`; this preset registers `cwd` for compatibility with existing prompts and configured suffixes. It resolves to the session's own working directory, or refers to the session workspace root when no directory is available. New default prompts use static workspace guidance. Upgrading refreshes `prompt-reader.mjs` without rewriting your `prompt.md`.
+
 **What to do if it has already been written badly**: edit the file directly, bypassing validation:
 
 ```sh

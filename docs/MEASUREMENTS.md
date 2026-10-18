@@ -2092,3 +2092,22 @@ PASS market-row-probe.mjs (10 checks; native on/save/off/save; default off)
 ```
 
 Compatibility peak aggregate RSS: 530436 KiB. Runtime peak: 1883952 KiB; minimum host available memory: 2084440 KiB. No model/GPU calls or production changes. The first attempt caught two old README version pins; after fixing both languages all guards passed. A 1536 MiB test budget stopped one browser attempt; the final clean run passed within a 2048 MiB cap and left no owned process. Earlier hosts reuse v2.2.4 acceptance evidence; required release CI retains them. Windows/Electron desktop and real model/tool execution are unverified.
+
+## 38. Issue #19: prompt variable compatibility (2026-10-18)
+
+Node v24.18.0, Android arm64 (Termux). The reader now registers `cwd` in the agent scope from `context.agent.session.header.cwd`, matching the legacy host's provider. Missing directory metadata falls back to a reference to the session workspace root. Existing prompt files and configured suffixes stay intact; new default prompts and the writing posture use static workspace guidance.
+
+Commands and observed output:
+
+```text
+$ node test/prompt-reader.test.mjs
+结果: 25 通过, 0 失败
+$ node test/prompt-tool.test.mjs
+结果: 69 通过, 0 失败
+$ node tools/verify-translation-pairing.mjs
+双语配对: OK
+$ node test/run.mjs
+找不到出厂 preset（shipped presets）。已尝试：
+```
+
+The last command exited 2 because shipped host presets are unavailable. `verify-doc-numbers.mjs` also cannot finish because it invokes that runner. The documented total adds ten new reader assertions to the previous total; it has not been remeasured in a full run here. A temporary host dependency installation was removed at the user's request. No live host or model acceptance is claimed for this fix.

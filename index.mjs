@@ -145,7 +145,8 @@ const MAX_DESCRIPTION = 400
 const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
 
 /**
- * Variables this deployment registers for every agent (`dsh-agent-loop`).
+ * Variables registered by `dsh-agent-loop` (model/provider) and the preset's
+ * `prompt-reader.mjs` (cwd, for compatibility with existing prompts).
  *
  * The persona section renders with strict interpolation: an unknown `{{name}}`
  * or a malformed group makes the renderer THROW, failing every model request in

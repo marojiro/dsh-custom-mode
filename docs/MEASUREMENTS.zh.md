@@ -1961,3 +1961,22 @@ PASS market-row-probe.mjs (10 checks; native on/save/off/save; default off)
 ```
 
 兼容检查总 RSS 峰值 530436 KiB；运行检查峰值 1883952 KiB，宿主可用内存最低 2084440 KiB。未调用模型/GPU，未改生产实例。首轮发现两份 README 的旧版本安装示例，修正后全部守卫通过。一次浏览器测试被自设 1536 MiB 预算停止；最终从干净目录以 2048 MiB 上限通过，没有残留自有进程。旧宿主复用 v2.2.4 验收证据，发布必经 CI 仍保留。Windows/Electron 桌面端和真实模型/工具执行尚未验证。
+
+## 38. Issue #19：提示词变量兼容（2026-10-18）
+
+Node v24.18.0，Android arm64（Termux）。读取器现在于代理作用域内注册 `cwd`，取值来自 `context.agent.session.header.cwd`，与旧宿主的提供器一致。缺少目录元数据时，回退为指向会话工作区根目录的文字。已有提示词文件与自定义后缀保持原样；新的默认提示词和写作姿态使用静态工作区指引。
+
+命令与实际输出：
+
+```text
+$ node test/prompt-reader.test.mjs
+结果: 25 通过, 0 失败
+$ node test/prompt-tool.test.mjs
+结果: 69 通过, 0 失败
+$ node tools/verify-translation-pairing.mjs
+双语配对: OK
+$ node test/run.mjs
+找不到出厂 preset（shipped presets）。已尝试：
+```
+
+最后一条命令因出厂宿主预设不可用而退出 2。`verify-doc-numbers.mjs` 也因调用该入口而无法完成。文档总数在此前总数上增加十条读取器断言，尚未在此环境完整重测。临时宿主依赖安装已按用户要求删除。本次修复不宣称已通过真实宿主或模型验收。

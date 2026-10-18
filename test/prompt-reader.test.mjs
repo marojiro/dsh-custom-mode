@@ -17,7 +17,7 @@
  * No dsh process and no model call is involved: the provider IS the contract.
  */
 
-import { mkdtempSync, writeFileSync, rmSync, renameSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, renameSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -41,14 +41,21 @@ const check = (label, condition, detail = '') => {
 function makeCtx() {
   const sections = []
   const effects = []
+  const variables = new Map()
   return {
     sections,
     effects,
+    variables,
     effect(fn, label) {
       effects.push(label)
       return fn()
     },
     systemPrompt: {
+      variable(name, provider) {
+        if (variables.has(name)) throw new Error(`Duplicate variable: ${name}`)
+        variables.set(name, provider)
+        return () => variables.delete(name)
+      },
       section(options) {
         sections.push(options)
         return () => {}
@@ -173,6 +180,35 @@ console.log('=== 7. 默认路径就是模块旁边的 prompt.md ===')
     typeof text === 'string' && text.includes('You are a coding agent powered by'),
     String(text).slice(0, 60),
   )
+}
+
+console.log()
+console.log('=== 8. Issue #19: cwd compatibility without a host-provided variable ===')
+{
+  const reader = await loadReader('legacy-cwd')
+  const text = 'Workspace: {{cwd}}. Model: {{model}}.\n'
+  writeFileSync(promptPath, text, 'utf8')
+  const ctx = makeCtx()
+  reader.apply(ctx, { path: promptPath, suffix: 'Legacy suffix: {{cwd}}.' })
+  const cwd = ctx.variables.get('cwd')
+  check('reader registers the legacy cwd variable', typeof cwd === 'function')
+  check('cwd uses the session directory on Windows', cwd({ agent: { session: { header: { cwd: 'C:\\Users\\test\\repo' } } } }) === 'C:\\Users\\test\\repo')
+  check('cwd is evaluated for each session', cwd({ agent: { session: { header: { cwd: '/other/workspace' } } } }) === '/other/workspace')
+  check('missing agent has a nonempty fallback', cwd({}) === 'the session workspace root')
+  check('missing session cwd has a nonempty fallback', cwd({ agent: { session: { header: {} } } }) === 'the session workspace root')
+  const prefix = ctx.sections.find((section) => section.name === 'deployment:persona-prefix')
+  check('existing prompt text is preserved on disk and when read', prefix.text() === text && readFileSync(promptPath, 'utf8') === text)
+  check('configured legacy suffix is preserved', ctx.sections.find((section) => section.name === 'deployment:persona-suffix').text === 'Legacy suffix: {{cwd}}.')
+
+  const complete = makeCtx()
+  reader.apply(complete, { path: promptPath, complete: true })
+  check('complete prompts also have the cwd compatibility variable', typeof complete.variables.get('cwd') === 'function')
+
+  const defaults = makeCtx()
+  reader.apply(defaults)
+  check('default suffix no longer depends on cwd interpolation', !defaults.sections.find((section) => section.name === 'deployment:persona-suffix').text.includes('{{cwd}}'))
+  const shipped = ['prompt.md', 'postures/write.en.md', 'postures/write.zh.md']
+  check('shipped prompts no longer depend on cwd interpolation', shipped.every((path) => !readFileSync(new URL('../preset/' + path, import.meta.url), 'utf8').includes('{{cwd}}')))
 }
 
 rmSync(dir, { recursive: true, force: true })

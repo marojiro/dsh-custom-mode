@@ -35,7 +35,7 @@ const PERSONA_PREFIX_ORDER = 0
 /** Sort order of the persona suffix, after all first-party guidance. */
 const PERSONA_SUFFIX_ORDER = 10200
 
-const DEFAULT_SUFFIX = 'Your working directory is {{cwd}}.'
+const DEFAULT_SUFFIX = 'Your working directory is the session workspace root; resolve relative paths against it.'
 const DEFAULT_FALLBACK =
   'You are a coding agent powered by the {{model}} model.\n\n' +
   '(No custom system prompt is set yet. Open Settings -> 自定义模式 to write one.)'
@@ -91,6 +91,15 @@ export function apply(ctx, config = {}) {
   const suffix = config.suffix ?? DEFAULT_SUFFIX
   const fallback = config.fallback ?? DEFAULT_FALLBACK
   const file = new PromptFile(path, fallback)
+
+  // dsh 0.2.x no longer supplies this variable. Keep existing user-owned
+  // prompts and configured suffixes working without rewriting them on disk.
+  // This agent-scoped registration shadows the legacy host's global variable.
+  ctx.effect(
+    () => ctx.systemPrompt.variable('cwd', (context) =>
+      context.agent?.session.header.cwd ?? 'the session workspace root'),
+    'custom-prompt.cwd',
+  )
 
   ctx.effect(
     () =>
